@@ -1,8 +1,10 @@
 package main
+
 import (
-        "io"
-        "net"
-        "os"
+	"io"
+	"net"
+	"os"
+	"sync"
 )
 func main() {
         listenAddr := ":" + os.Getenv("PORT")
@@ -23,8 +25,23 @@ func handleConnection(src net.Conn, targetAddr string) {
         dst, err := net.Dial("tcp", targetAddr)
         if err != nil {
                 src.Close()
-                return
+		return
         }
-        go io.Copy(dst, src)
-        go io.Copy(src, dst)
+		
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+        go func() {
+                io.Copy(dst, src)
+                wg.Done()
+        }()
+
+        go func() {
+                io.Copy(src, dst)
+                wg.Done()
+        }()
+		
+        wg.Wait()
+	src.Close()
+	dst.Close()
 }
